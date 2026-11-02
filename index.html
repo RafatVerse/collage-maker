@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0a0b" />
 <title>Collage Studio</title>
+
 <!-- PWA & Viewport Settings -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -43,14 +44,17 @@ html, body {
   color: var(--text);
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
+  overflow: hidden; /* Full screen fixed */
 }
 
 body.locked { overflow: hidden; }
 .hidden { display: none !important; }
 svg { display: inline-block; vertical-align: middle; }
 
-/* ==================== 2. LAYOUT ==================== */
+/* ==================== 2. LAYOUT & FULLSCREEN ==================== */
 #appRoot {
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -119,18 +123,6 @@ svg { display: inline-block; vertical-align: middle; }
   box-shadow: 0 24px 70px -24px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04);
 }
 #collageCanvas.active { display: block; }
-
-.stage.dragover::after {
-  content: '';
-  position: absolute;
-  inset: 12px;
-  border-radius: 16px;
-  border: 2px dashed var(--accent);
-  background: var(--accent-soft);
-  pointer-events: none;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-@keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
 
 /* --- Empty State --- */
 .empty-state {
@@ -371,6 +363,20 @@ svg { display: inline-block; vertical-align: middle; }
 .btn-sm svg { width: 13px; height: 13px; }
 .w-full { width: 100%; }
 
+/* --- File input hidden properly for mobile --- */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+label.btn { cursor: pointer; }
+
 /* ==================== 5. OVERLAYS & SHEETS ==================== */
 .overlay {
   position: fixed;
@@ -547,7 +553,7 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--accent); color: #0a0a0b; font-weight: 600;
 }
 
-/* ==================== 9. TOASTS ==================== */
+/* ==================== 9. TOASTS & DRAG OVERLAY ==================== */
 #toastWrap {
   position: fixed;
   left: 50%; bottom: 24px;
@@ -567,6 +573,34 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .toast svg { width: 14px; height: 14px; color: var(--accent); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: none; } }
+
+.drag-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(10, 10, 11, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.drag-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.drag-overlay-inner {
+  border: 2px dashed var(--accent);
+  background: var(--accent-soft);
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  animation: pulse 1.5s infinite;
+}
 
 /* ==================== 10. TABLET BLOCKER ==================== */
 #tabletBlocker {
@@ -599,59 +633,6 @@ input[type="range"]::-webkit-slider-thumb {
 .top-half { top: 50%; transform: translateY(-50%); }
 .pr-16 { padding-right: 64px; }
 .text-center { text-align: center; }
-
-/* --- FULLSCREEN APP FIX --- */
-body, html {
-  overflow: hidden; /* পুরো পেজ স্ক্রল বন্ধ করবে */
-}
-#appRoot {
-  position: fixed;
-  inset: 0; /* Full Viewport */
-}
-
-/* --- FILE INPUT FIX (Mobile Click Issue) --- */
-.visually-hidden {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-}
-label.btn { cursor: pointer; }
-
-/* --- GLOBAL DRAG OVERLAY --- */
-.drag-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: rgba(10, 10, 11, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s;
-}
-.drag-overlay.active {
-  opacity: 1;
-  pointer-events: auto;
-}
-.drag-overlay-inner {
-  border: 2px dashed var(--accent);
-  background: var(--accent-soft);
-  border-radius: 24px;
-  padding: 40px;
-  text-align: center;
-  animation: pulse 1.5s infinite;
-}
-  
 </style>
 </head>
 
@@ -672,8 +653,17 @@ label.btn { cursor: pointer; }
   </div>
 </div>
 
+<!-- ==================== DRAG OVERLAY ==================== -->
+<div id="dragOverlay" class="drag-overlay">
+  <div class="drag-overlay-inner">
+    <svg style="width:48px; height:48px; color:var(--accent); margin:0 auto 16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+    <h2 style="font-size:20px; font-weight:600; color:#fff; margin-bottom:8px;">Drop images here</h2>
+    <p style="font-size:14px; color:var(--muted);">Only image files will be accepted</p>
+  </div>
+</div>
+
 <!-- ==================== APP ROOT ==================== -->
-<div id="appRoot" class="flex flex-col" style="display: flex; height: 100dvh; height: 100vh;">
+<div id="appRoot" style="display: flex; flex-direction: column; height: 100%;">
 
   <!-- ---------- HEADER ---------- -->
   <header class="app-header">
@@ -691,10 +681,11 @@ label.btn { cursor: pointer; }
     </div>
 
     <div class="header-actions">
-      <button id="addBtn" class="btn btn-ghost btn-sm">
+      <!-- Add Button changed to Label for Mobile Fix -->
+      <label for="addInput" class="btn btn-ghost btn-sm">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         <span>Add</span>
-      </button>
+      </label>
       <button id="settingsBtn" class="btn btn-ghost btn-icon" aria-label="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>
@@ -721,10 +712,11 @@ label.btn { cursor: pointer; }
       </div>
       <h2>Drop your images here</h2>
       <p>Add as many images as you like — they'll arrange themselves into a staggered grid.</p>
-      <button id="emptyAddBtn" class="btn btn-primary mx-auto">
+      <!-- Choose Images Button changed to Label for Mobile Fix -->
+      <label for="addInput" class="btn btn-primary mx-auto" style="margin: 0 auto;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         Choose images
-      </button>
+      </label>
     </div>
   </main>
 
@@ -861,8 +853,9 @@ label.btn { cursor: pointer; }
 
 <div id="toastWrap"></div>
 
-<input type="file" id="addInput" accept="image/*" multiple style="display: none;" />
-<input type="file" id="reselectInput" accept="image/*" style="display: none;" />
+<!-- Hidden File Inputs (Fixed for Mobile) -->
+<input type="file" id="addInput" accept="image/*" multiple class="visually-hidden" />
+<input type="file" id="reselectInput" accept="image/*" class="visually-hidden" />
 
 <script>
 /* ==================================================================
@@ -1647,7 +1640,7 @@ function initExport(){
 }
 
 /* ==================================================================
-   11. GLOBAL WIRING / INIT
+   11. GLOBAL WIRING / INIT & DRAG/DROP
    ================================================================== */
 function renderAll(){
   renderPreview();
@@ -1663,7 +1656,6 @@ function checkDevice(){
   const maxSide = Math.max(w, h);
   const coarse  = window.matchMedia('(pointer: coarse)').matches;
 
-  // Detect tablets but allow standard mobile devices (width <= 768)
   const isTablet = coarse && minSide >= 600 && maxSide >= 768 && maxSide <= 1400;
 
   $('tabletBlocker').classList.toggle('hidden', !isTablet);
@@ -1671,12 +1663,20 @@ function checkDevice(){
 }
 
 function initGlobal(){
+  window.addEventListener('error', function(e) {
+    toast('Error: ' + e.message);
+  });
+
+  // PWA Registration
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW failed', err));
+  }
+
   checkDevice();
   window.addEventListener('resize', checkDevice);
 
   const addInput = $('addInput');
-  $('addBtn').addEventListener('click', () => addInput.click());
-  $('emptyAddBtn').addEventListener('click', () => addInput.click());
+  
   addInput.addEventListener('change', async (e) => {
     const files = e.target.files;
     e.target.value = '';
@@ -1710,31 +1710,53 @@ function initGlobal(){
     } catch (err){ toast('Could not load image'); }
   });
 
-  const stage = $('stage');
-  let dragDepth = 0;
+  // --- Global Drag and Drop Logic ---
+  const dragOverlay = $('dragOverlay');
+  let dragCounter = 0;
 
-  ['dragenter', 'dragover'].forEach(evt => {
-    stage.addEventListener(evt, (e) => {
-      e.preventDefault();
-      if (evt === 'dragenter') dragDepth++;
-      stage.classList.add('dragover');
-    });
-  });
-  stage.addEventListener('dragleave', (e) => {
+  window.addEventListener('dragenter', (e) => {
     e.preventDefault();
-    dragDepth = Math.max(0, dragDepth - 1);
-    if (dragDepth === 0) stage.classList.remove('dragover');
+    if (e.dataTransfer.types.includes('Files')) {
+      dragCounter++;
+      dragOverlay.classList.add('active');
+    }
   });
-  stage.addEventListener('drop', async (e) => {
+
+  window.addEventListener('dragover', (e) => {
     e.preventDefault();
-    dragDepth = 0;
-    stage.classList.remove('dragover');
-    if (e.dataTransfer?.files?.length) await addFiles(e.dataTransfer.files);
+    e.dataTransfer.dropEffect = 'copy';
   });
 
-  window.addEventListener('dragover', (e) => e.preventDefault());
-  window.addEventListener('drop', (e) => e.preventDefault());
+  window.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter === 0) {
+      dragOverlay.classList.remove('active');
+    }
+  });
 
+  window.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    dragCounter = 0;
+    dragOverlay.classList.remove('active');
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const files = Array.from(e.dataTransfer.files);
+      const validImages = files.filter(f => f.type.startsWith('image/'));
+
+      if (validImages.length === 0) {
+        toast('Only image files are allowed!');
+        return;
+      }
+      if (validImages.length < files.length) {
+        toast('Some non-image files were ignored.');
+      }
+
+      await addFiles(validImages);
+    }
+  });
+
+  // --- Other UI listeners ---
   $('dockToggle').addEventListener('click', () => toggleDock());
   $('settingsBtn').addEventListener('click', () => openPanel('settingsSheet'));
   $('exportBtn').addEventListener('click', () => {
