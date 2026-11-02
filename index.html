@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0a0b" />
 <title>Collage Studio</title>
 
-<!-- PWA & Viewport Settings -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -44,7 +43,7 @@ html, body {
   color: var(--text);
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
-  overflow: hidden; /* Full screen fixed */
+  overflow: hidden;
 }
 
 body.locked { overflow: hidden; }
@@ -61,7 +60,6 @@ svg { display: inline-block; vertical-align: middle; }
   height: 100vh;
 }
 
-/* --- Header --- */
 .app-header {
   display: flex;
   align-items: center;
@@ -71,6 +69,7 @@ svg { display: inline-block; vertical-align: middle; }
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
   background-color: var(--surface);
+  z-index: 10;
 }
 
 .logo-mark {
@@ -102,7 +101,7 @@ svg { display: inline-block; vertical-align: middle; }
   gap: 8px;
 }
 
-/* --- Stage --- */
+/* --- Stage & Canvas --- */
 .stage {
   flex: 1;
   min-height: 0;
@@ -110,17 +109,33 @@ svg { display: inline-block; vertical-align: middle; }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  background: radial-gradient(circle at 50% 0%, rgba(163, 230, 53, 0.05), transparent 60%);
+  overflow: hidden;
+  /* Dot Grid */
+  background-image: radial-gradient(var(--border) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+  background-position: center;
+  touch-action: none;
 }
+
+#canvasWrapper {
+  transform-origin: center center;
+  will-change: transform;
+  transition: transform 0.1s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+}
+
 #collageCanvas {
   display: none;
   max-width: 100%;
   max-height: 100%;
   width: auto;
   height: auto;
-  border-radius: 8px;
-  box-shadow: 0 24px 70px -24px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04);
+  box-shadow: 0 24px 70px -24px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.06);
+  transition: border-radius 0.2s, box-shadow 0.3s;
 }
 #collageCanvas.active { display: block; }
 
@@ -129,6 +144,10 @@ svg { display: inline-block; vertical-align: middle; }
   text-align: center;
   max-width: 300px;
   padding: 24px;
+  background: var(--bg);
+  border-radius: 20px;
+  box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+  pointer-events: auto;
 }
 .empty-icon {
   width: 64px;
@@ -151,6 +170,7 @@ svg { display: inline-block; vertical-align: middle; }
   background-color: var(--surface);
   display: flex;
   flex-direction: column;
+  z-index: 10;
 }
 .dock-header {
   display: flex;
@@ -233,6 +253,7 @@ svg { display: inline-block; vertical-align: middle; }
   max-height: 45vh;
   overflow-y: auto;
   padding: 0 12px 16px;
+  scroll-behavior: smooth;
 }
 
 /* ==================== 3. SORTABLE LIST ==================== */
@@ -242,6 +263,7 @@ svg { display: inline-block; vertical-align: middle; }
   overflow: hidden;
   margin-bottom: 8px;
   background: var(--danger);
+  transition: height 0.25s var(--ease), opacity 0.25s, margin 0.25s;
 }
 .li-delete {
   position: absolute;
@@ -276,14 +298,20 @@ svg { display: inline-block; vertical-align: middle; }
   border: 1px solid var(--border);
   touch-action: pan-y;
   will-change: transform;
+  transition: transform 0.25s var(--ease), background 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
-.li:hover { background: var(--surface-3); border-color: var(--border-strong); }
+.li:hover { background: var(--surface-3); }
+.li.selected {
+  border-color: var(--accent);
+  background: rgba(163, 230, 53, 0.05);
+  box-shadow: 0 0 0 1px var(--accent);
+}
 .li.is-dragging {
   z-index: 30;
   background: var(--surface-3);
   border-color: var(--accent);
   box-shadow: 0 16px 40px -12px rgba(0,0,0,0.85);
-  transition: none;
+  transition: none; /* Dragged item follows cursor directly */
   cursor: grabbing;
 }
 
@@ -302,9 +330,10 @@ svg { display: inline-block; vertical-align: middle; }
   overflow: hidden;
   flex-shrink: 0;
   background: var(--surface-3);
+  pointer-events: none;
 }
 .li-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.li-meta { flex: 1; min-width: 0; }
+.li-meta { flex: 1; min-width: 0; pointer-events: none; }
 .li-name {
   font-size: 12px;
   font-weight: 500;
@@ -325,12 +354,14 @@ svg { display: inline-block; vertical-align: middle; }
   border: none;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
+  z-index: 2;
 }
 .li-btn svg { width: 15px; height: 15px; }
 .li-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
 .li-reselect:hover { color: var(--accent); }
 .li-handle { cursor: grab; touch-action: none; }
 .li-handle:active { cursor: grabbing; }
+.li-handle:hover { color: var(--accent); }
 
 /* ==================== 4. BUTTONS & INPUTS ==================== */
 .btn {
@@ -363,17 +394,12 @@ svg { display: inline-block; vertical-align: middle; }
 .btn-sm svg { width: 13px; height: 13px; }
 .w-full { width: 100%; }
 
-/* --- File input hidden properly for mobile --- */
 .visually-hidden {
   position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
+  width: 1px !important; height: 1px !important;
+  padding: 0 !important; margin: -1px !important;
+  overflow: hidden !important; clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important; border: 0 !important;
 }
 label.btn { cursor: pointer; }
 
@@ -404,7 +430,7 @@ label.btn { cursor: pointer; }
 @media (max-width: 767px) {
   .sheet, .modal {
     left: 0; right: 0; bottom: 0;
-    max-height: 85dvh;
+    max-height: 88dvh;
     border-radius: 20px 20px 0 0;
     border-bottom: none;
     transform: translateY(100%);
@@ -430,29 +456,21 @@ label.btn { cursor: pointer; }
     width: 380px;
     border-radius: 18px;
     transform: translate(-50%, -50%) scale(0.95);
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0; pointer-events: none;
     transition: transform 0.3s var(--ease), opacity 0.25s;
   }
   .modal.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
 }
 
 .sheet-grip {
-  width: 32px;
-  height: 4px;
-  border-radius: 99px;
-  background: var(--border-strong);
-  margin: 10px auto 0;
-  flex-shrink: 0;
+  width: 32px; height: 4px; border-radius: 99px;
+  background: var(--border-strong); margin: 10px auto 0; flex-shrink: 0;
 }
 @media (min-width: 768px) { .sheet-grip { display: none; } }
 
 .sheet-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px 10px;
-  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 10px; flex-shrink: 0;
 }
 .sheet-head h2 { font-size: 14px; font-weight: 600; }
 .sheet-body { overflow-y: auto; padding: 0 16px 20px; }
@@ -461,157 +479,96 @@ label.btn { cursor: pointer; }
 .field { padding: 14px 0; border-bottom: 1px solid var(--border); }
 .field:last-of-type { border-bottom: none; }
 .field-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
 }
 .field-head label { font-size: 12px; font-weight: 500; }
 .field-head .val {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent);
-  background: var(--accent-soft);
-  padding: 2px 8px;
-  border-radius: 99px;
+  font-size: 11px; font-weight: 600; color: var(--accent);
+  background: var(--accent-soft); padding: 2px 8px; border-radius: 99px;
 }
 .hint { font-size: 10.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
 
 input[type="range"] {
-  -webkit-appearance: none;
-  width: 100%;
-  height: 20px;
-  background: transparent;
-  cursor: pointer;
+  -webkit-appearance: none; width: 100%; height: 20px; background: transparent; cursor: pointer;
 }
 input[type="range"]::-webkit-slider-runnable-track {
   height: 4px; border-radius: 99px; background: var(--surface-3);
 }
 input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 14px; height: 14px; border-radius: 50%;
-  background: var(--accent);
-  margin-top: -5px;
-  border: 2px solid var(--surface);
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); margin-top: -5px; border: 2px solid var(--surface);
   box-shadow: 0 0 0 1px var(--accent);
 }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
-  height: 28px; padding: 0 10px; border-radius: 8px;
-  font-size: 11px; font-weight: 500; cursor: pointer;
-  background: var(--surface-2); color: var(--muted);
-  border: 1px solid var(--border);
-  font-family: inherit;
+  height: 28px; padding: 0 10px; border-radius: 8px; font-size: 11px; font-weight: 500; cursor: pointer;
+  background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); font-family: inherit;
 }
 .chip.active { background: var(--accent-soft); color: var(--accent); border-color: rgba(163,230,53,0.4); font-weight: 600; }
 
 .text-input {
   width: 100%; height: 38px; padding: 0 12px; border-radius: 10px;
   background: var(--surface-2); border: 1px solid var(--border);
-  color: var(--text); font-size: 12.5px; font-family: inherit;
-  outline: none;
+  color: var(--text); font-size: 12.5px; font-family: inherit; outline: none;
 }
 .text-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 
 /* ==================== 7. COLOR WHEEL & PRESETS ==================== */
 .wheel-wrap {
-  position: relative;
-  width: 100%;
-  max-width: 180px;
-  margin: 0 auto 16px;
-  aspect-ratio: 1;
-  touch-action: none;
-  cursor: crosshair;
+  position: relative; width: 100%; max-width: 160px; margin: 0 auto 16px;
+  aspect-ratio: 1; touch-action: none; cursor: crosshair;
 }
-.wheel-wrap canvas {
-  width: 100%; height: 100%;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px var(--border);
-}
+.wheel-wrap canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 0 1px var(--border); }
 .presets { display: flex; flex-wrap: wrap; gap: 6px; }
 .preset {
-  width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
-  border: 1px solid rgba(255,255,255,0.1);
+  width: 24px; height: 24px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);
 }
 .preset.active { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--accent); }
 
 /* ==================== 8. SEGMENTED CONTROL ==================== */
 .segmented {
-  display: flex;
-  padding: 3px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  margin-bottom: 16px;
+  display: flex; padding: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px;
 }
 .segmented button {
   flex: 1; height: 28px; border-radius: 7px; border: none; cursor: pointer;
   background: transparent; color: var(--muted); font-size: 11.5px; font-weight: 500; font-family: inherit;
 }
-.segmented button.active {
-  background: var(--accent); color: #0a0a0b; font-weight: 600;
-}
+.segmented button.active { background: var(--accent); color: #0a0a0b; font-weight: 600; }
 
 /* ==================== 9. TOASTS & DRAG OVERLAY ==================== */
 #toastWrap {
-  position: fixed;
-  left: 50%; bottom: 24px;
-  transform: translateX(-50%);
-  z-index: 200;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  pointer-events: none;
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  z-index: 200; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;
 }
 .toast {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 14px; border-radius: 10px;
-  background: rgba(28,28,33,0.95);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border-strong);
-  font-size: 12px; color: var(--text);
-  animation: toastIn 0.3s var(--ease);
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px;
+  background: rgba(28,28,33,0.95); backdrop-filter: blur(8px);
+  border: 1px solid var(--border-strong); font-size: 12px; color: var(--text); animation: toastIn 0.3s var(--ease);
 }
 .toast svg { width: 14px; height: 14px; color: var(--accent); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: none; } }
 
 .drag-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: rgba(10, 10, 11, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s;
+  position: fixed; inset: 0; z-index: 9999; background: rgba(10, 10, 11, 0.85);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
 }
-.drag-overlay.active {
-  opacity: 1;
-  pointer-events: auto;
-}
+.drag-overlay.active { opacity: 1; pointer-events: auto; }
 .drag-overlay-inner {
-  border: 2px dashed var(--accent);
-  background: var(--accent-soft);
-  border-radius: 24px;
-  padding: 40px;
-  text-align: center;
-  animation: pulse 1.5s infinite;
+  border: 2px dashed var(--accent); background: var(--accent-soft);
+  border-radius: 24px; padding: 40px; text-align: center; animation: pulse 1.5s infinite;
 }
 
 /* ==================== 10. TABLET BLOCKER ==================== */
 #tabletBlocker {
-  position: fixed; inset: 0; z-index: 900;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 16px; padding: 24px; text-align: center;
+  position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px; padding: 24px; text-align: center;
   background: radial-gradient(circle at 50% 30%, #1a2e05 0%, #0a0a0b 60%);
 }
 .blocker-icon {
-  width: 64px; height: 64px; border-radius: 20px;
-  display: grid; place-items: center;
+  width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center;
   background: var(--accent-soft); border: 1px solid rgba(163,230,53,0.3);
 }
 .blocker-icon svg { width: 28px; height: 28px; color: var(--accent); }
@@ -633,12 +590,15 @@ input[type="range"]::-webkit-slider-thumb {
 .top-half { top: 50%; transform: translateY(-50%); }
 .pr-16 { padding-right: 64px; }
 .text-center { text-align: center; }
+
+/* Custom Scrollbar for list */
+#list::-webkit-scrollbar { width: 4px; }
+#list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
 </style>
 </head>
 
 <body>
 
-<!-- ==================== TABLET BLOCKER ==================== -->
 <div id="tabletBlocker" class="hidden">
   <div class="blocker-icon">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -653,7 +613,6 @@ input[type="range"]::-webkit-slider-thumb {
   </div>
 </div>
 
-<!-- ==================== DRAG OVERLAY ==================== -->
 <div id="dragOverlay" class="drag-overlay">
   <div class="drag-overlay-inner">
     <svg style="width:48px; height:48px; color:var(--accent); margin:0 auto 16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
@@ -662,10 +621,8 @@ input[type="range"]::-webkit-slider-thumb {
   </div>
 </div>
 
-<!-- ==================== APP ROOT ==================== -->
 <div id="appRoot" style="display: flex; flex-direction: column; height: 100%;">
 
-  <!-- ---------- HEADER ---------- -->
   <header class="app-header">
     <div style="display: flex; align-items: center; gap: 10px;">
       <div class="logo-mark">
@@ -681,7 +638,6 @@ input[type="range"]::-webkit-slider-thumb {
     </div>
 
     <div class="header-actions">
-      <!-- Add Button changed to Label for Mobile Fix -->
       <label for="addInput" class="btn btn-ghost btn-sm">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         <span>Add</span>
@@ -700,9 +656,10 @@ input[type="range"]::-webkit-slider-thumb {
     </div>
   </header>
 
-  <!-- ---------- PREVIEW STAGE ---------- -->
   <main id="stage" class="stage">
-    <canvas id="collageCanvas"></canvas>
+    <div id="canvasWrapper">
+      <canvas id="collageCanvas"></canvas>
+    </div>
 
     <div id="emptyState" class="empty-state">
       <div class="empty-icon">
@@ -712,7 +669,6 @@ input[type="range"]::-webkit-slider-thumb {
       </div>
       <h2>Drop your images here</h2>
       <p>Add as many images as you like — they'll arrange themselves into a staggered grid.</p>
-      <!-- Choose Images Button changed to Label for Mobile Fix -->
       <label for="addInput" class="btn btn-primary mx-auto" style="margin: 0 auto;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         Choose images
@@ -720,7 +676,6 @@ input[type="range"]::-webkit-slider-thumb {
     </div>
   </main>
 
-  <!-- ---------- DOCK ---------- -->
   <section class="dock">
     <div class="dock-header">
       <span class="dock-title">Images</span>
@@ -743,10 +698,8 @@ input[type="range"]::-webkit-slider-thumb {
   </section>
 </div>
 
-<!-- ==================== OVERLAY ==================== -->
 <div id="overlay" class="overlay"></div>
 
-<!-- ==================== SETTINGS SHEET ==================== -->
 <div id="settingsSheet" class="sheet">
   <div class="sheet-grip"></div>
   <div class="sheet-head">
@@ -763,7 +716,6 @@ input[type="range"]::-webkit-slider-thumb {
         <span id="colsValue" class="val">4</span>
       </div>
       <input type="range" id="colsRange" min="1" max="8" step="1" value="4" />
-      <p class="hint">Images flow into the shortest column, creating a staggered grid.</p>
     </div>
 
     <div class="field">
@@ -776,14 +728,29 @@ input[type="range"]::-webkit-slider-thumb {
 
     <div class="field">
       <div class="field-head">
+        <label for="canvasRadiusRange">Canvas Corner Radius</label>
+        <span id="canvasRadiusValue" class="val">0px</span>
+      </div>
+      <input type="range" id="canvasRadiusRange" min="0" max="100" step="1" value="0" />
+    </div>
+
+    <div class="field">
+      <div class="field-head">
+        <label for="imageRadiusRange">Image Corner Radius</label>
+        <span id="imageRadiusValue" class="val">8px</span>
+      </div>
+      <input type="range" id="imageRadiusRange" min="0" max="50" step="1" value="8" />
+      <p class="hint">Select images in the list to apply radius only to them.</p>
+    </div>
+
+    <div class="field">
+      <div class="field-head">
         <label>Background colour</label>
         <span id="bgValue" class="val">#0a0a0b</span>
       </div>
-
       <div class="wheel-wrap" id="wheelWrap">
         <canvas id="wheelCanvas" width="240" height="240"></canvas>
       </div>
-
       <div style="margin-bottom: 12px;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
           <span style="font-size: 11px; color: var(--muted);">Brightness</span>
@@ -791,11 +758,9 @@ input[type="range"]::-webkit-slider-thumb {
         </div>
         <input type="range" id="brightRange" min="0" max="100" value="4" />
       </div>
-
       <div style="display: flex; gap: 8px; margin-bottom: 16px;">
         <input type="text" id="hexInput" class="text-input font-mono" value="#0A0A0B" maxlength="7" spellcheck="false" />
       </div>
-
       <div class="presets" id="presets"></div>
     </div>
 
@@ -810,7 +775,6 @@ input[type="range"]::-webkit-slider-thumb {
   </div>
 </div>
 
-<!-- ==================== EXPORT MODAL ==================== -->
 <div id="exportModal" class="modal">
   <div class="sheet-grip"></div>
   <div class="sheet-head">
@@ -844,7 +808,6 @@ input[type="range"]::-webkit-slider-thumb {
       </svg>
       Download
     </button>
-
     <p style="font-size: 10px; color: var(--muted); text-align: center; margin-top: 12px; line-height: 1.5;">
       Exported locally in your browser — no internet needed.
     </p>
@@ -853,14 +816,10 @@ input[type="range"]::-webkit-slider-thumb {
 
 <div id="toastWrap"></div>
 
-<!-- Hidden File Inputs (Fixed for Mobile) -->
 <input type="file" id="addInput" accept="image/*" multiple class="visually-hidden" />
 <input type="file" id="reselectInput" accept="image/*" class="visually-hidden" />
 
 <script>
-/* ==================================================================
-   1. STATE & CONSTANTS
-   ================================================================== */
 const PREVIEW_W  = 1200;
 const EXPORT_W   = 2400;
 const WHEEL_SIZE = 240;
@@ -880,15 +839,16 @@ const state = {
   hsv:         { h: 0, s: 0, v: 0.039 },
   filename:    'my-collage',
   format:      'png',
-  expanded:    false
+  expanded:    false,
+  selectedIndices: new Set(),
+  canvasRadius: 0,
+  imageRadius: 8,
+  zoom: 1
 };
 
 let reselectIndex = null;
 let previewRaf    = null;
 
-/* ==================================================================
-   2. UTILITIES
-   ================================================================== */
 const $ = (id) => document.getElementById(id);
 
 function uid(){ return Math.random().toString(36).slice(2, 10); }
@@ -898,7 +858,6 @@ function escapeHtml(s){
     { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
   ));
 }
-
 function loadImageEl(src){
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -908,7 +867,6 @@ function loadImageEl(src){
   });
 }
 
-/* ---------- Colour conversion ---------- */
 function hsvToRgb(h, s, v){
   h = ((h % 360) + 360) % 360;
   const c = v * s;
@@ -947,7 +905,6 @@ function rgbToHsv(r, g, b){
   return { h, s: max === 0 ? 0 : d / max, v: max };
 }
 
-/* ---------- Toast ---------- */
 let toastTimer = null;
 function toast(msg){
   const wrap = $('toastWrap');
@@ -960,9 +917,6 @@ function toast(msg){
   toastTimer = setTimeout(() => { t.remove(); }, 2500);
 }
 
-/* ==================================================================
-   3. IMAGE STATE MUTATIONS
-   ================================================================== */
 async function addFiles(fileList){
   const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
   if (!files.length) return;
@@ -977,7 +931,8 @@ async function addFiles(fileList){
         el,
         w:    el.naturalWidth  || 1,
         h:    el.naturalHeight || 1,
-        name: file.name || 'image'
+        name: file.name || 'image',
+        radius: null // null means use global imageRadius
       });
     } catch (err){
       console.warn('Failed to load image', file.name, err);
@@ -990,6 +945,7 @@ function deleteImage(index){
   const img = state.images[index];
   if (!img) return;
   state.images.splice(index, 1);
+  state.selectedIndices.clear();
   setTimeout(() => URL.revokeObjectURL(img.url), 1000);
   renderAll();
 }
@@ -997,12 +953,10 @@ function deleteImage(index){
 function clearAllImages(){
   state.images.forEach(im => URL.revokeObjectURL(im.url));
   state.images = [];
+  state.selectedIndices.clear();
   renderAll();
 }
 
-/* ==================================================================
-   4. COLLAGE LAYOUT & CANVAS
-   ================================================================== */
 function computeLayout(images, cols, gap, width){
   if (!images.length) return { items: [], width, height: 1 };
 
@@ -1044,22 +998,31 @@ function roundRectPath(ctx, x, y, w, h, r){
   ctx.closePath();
 }
 
-function drawCollage(canvas, images, cols, gap, bg, width){
+function drawCollage(canvas, images, cols, gap, bg, width, canvasR, defaultImgR){
   const { items, height } = computeLayout(images, cols, gap, width);
   canvas.width  = Math.max(1, Math.round(width));
   canvas.height = Math.max(1, Math.round(height));
 
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw background
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const radius = Math.min(gap * 0.8, width * 0.008);
+  // Apply Canvas Mask if radius > 0
+  if (canvasR > 0) {
+    ctx.globalCompositeOperation = 'destination-in';
+    roundRectPath(ctx, 0, 0, canvas.width, canvas.height, canvasR);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  }
 
   for (const it of items){
     ctx.save();
-    if (radius > 0.5){
-      roundRectPath(ctx, it.x, it.y, it.w, it.h, radius);
+    const r = it.im.radius !== null ? it.im.radius : defaultImgR;
+    if (r > 0.5){
+      roundRectPath(ctx, it.x, it.y, it.w, it.h, r);
       ctx.clip();
     }
     ctx.drawImage(it.im.el, it.x, it.y, it.w, it.h);
@@ -1078,10 +1041,14 @@ function renderPreview(){
     return;
   }
 
-  canvas.classList.add('active');
+  canvas.classList.remove('hidden');
   empty.classList.add('hidden');
+  canvas.classList.add('active');
 
-  drawCollage(canvas, state.images, state.columns, state.gap, state.bgColor, PREVIEW_W);
+  // Since we use CSS border-radius for preview to keep it sharp, we don't mask the canvas here.
+  canvas.style.borderRadius = state.canvasRadius + 'px';
+
+  drawCollage(canvas, state.images, state.columns, state.gap, state.bgColor, PREVIEW_W, 0, state.imageRadius);
 }
 
 function schedulePreview(){
@@ -1092,9 +1059,7 @@ function schedulePreview(){
   });
 }
 
-/* ==================================================================
-   5. STRIP & LIST UI
-   ================================================================== */
+/* ==================== STRIP & LIST ==================== */
 function renderStrip(){
   const strip = $('strip');
   strip.innerHTML = '';
@@ -1102,7 +1067,6 @@ function renderStrip(){
   state.images.forEach((im, i) => {
     const d = document.createElement('div');
     d.className = 'strip-item';
-    d.dataset.index = i;
     d.innerHTML = `<img src="${im.url}" alt="" draggable="false" /><span class="idx">${i + 1}</span>`;
     d.addEventListener('click', () => {
       if (!state.expanded) toggleDock(true);
@@ -1120,10 +1084,10 @@ function renderList(){
   list.innerHTML = '';
 
   state.images.forEach((im, i) => {
+    const isSelected = state.selectedIndices.has(i);
     const wrap = document.createElement('div');
     wrap.className = 'li-wrap';
-    wrap.dataset.index = i;
-
+    
     wrap.innerHTML = `
       <div class="li-delete">
         <span class="li-delete-label">Release to delete</span>
@@ -1133,7 +1097,7 @@ function renderList(){
           </svg>
         </span>
       </div>
-      <div class="li" data-index="${i}">
+      <div class="li ${isSelected ? 'selected' : ''}" data-index="${i}">
         <span class="li-num">${i + 1}</span>
         <div class="li-thumb"><img src="${im.url}" alt="" draggable="false" /></div>
         <div class="li-meta">
@@ -1158,6 +1122,18 @@ function renderList(){
     const reselectBtn= wrap.querySelector('.li-reselect');
     const delLabel   = wrap.querySelector('.li-delete-label');
 
+    // Click to select
+    li.addEventListener('click', (e) => {
+      if (e.target.closest('.li-handle') || e.target.closest('.li-reselect')) return;
+      if (state.selectedIndices.has(i)) {
+        state.selectedIndices.delete(i);
+        li.classList.remove('selected');
+      } else {
+        state.selectedIndices.add(i);
+        li.classList.add('selected');
+      }
+    });
+
     reselectBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       reselectIndex = i;
@@ -1175,42 +1151,50 @@ function renderList(){
   });
 }
 
-/* ==================================================================
-   6. DRAG TO REORDER
-   ================================================================== */
+/* ==================== DRAG TO REORDER (FIXED) ==================== */
 function startDrag(e, fromIndex){
-  const list   = $('list');
-  const wraps  = Array.from(list.querySelectorAll('.li-wrap'));
-  const nodes  = wraps.map(w => w.querySelector('.li'));
+  const list = $('list');
+  const wraps = Array.from(list.querySelectorAll('.li-wrap'));
+  const nodes = wraps.map(w => w.querySelector('.li'));
   const startY = e.clientY;
+  const step = 64; // li height (56) + margin bottom (8)
 
-  const step = (nodes[0]?.offsetHeight || 56) + 8;
   const dragEl = nodes[fromIndex];
-  const dragWrap = wraps[fromIndex];
-  if (!dragEl || !dragWrap) return;
+  if (!dragEl) return;
 
   dragEl.classList.add('is-dragging');
-  wraps.forEach(w => w.classList.add('is-drag-sibling'));
+  // Remove transition from dragged item so it follows cursor instantly
+  dragEl.style.transition = 'none';
 
   let targetIndex = fromIndex;
   let moved = false;
 
   const onMove = (ev) => {
     const dy = ev.clientY - startY;
-    if (!moved && Math.abs(dy) > 2) moved = true;
+    if (!moved && Math.abs(dy) > 3) moved = true;
+    
     dragEl.style.transform = `translateY(${dy}px)`;
 
-    let target = fromIndex + Math.round(dy / step);
-    target = clamp(target, 0, nodes.length - 1);
+    let newIndex = fromIndex + Math.round(dy / step);
+    newIndex = clamp(newIndex, 0, nodes.length - 1);
 
-    if (target !== targetIndex){
-      targetIndex = target;
+    if (newIndex !== targetIndex) {
+      targetIndex = newIndex;
+      
       nodes.forEach((node, i) => {
         if (i === fromIndex) return;
-        let t = 0;
-        if (fromIndex < targetIndex && i > fromIndex && i <= targetIndex) t = -step;
-        else if (fromIndex > targetIndex && i >= targetIndex && i < fromIndex) t = step;
-        node.style.transform = t ? `translateY(${t}px)` : '';
+        
+        let offset = 0;
+        if (fromIndex < targetIndex) {
+          // Dragging down
+          if (i > fromIndex && i <= targetIndex) offset = -step;
+        } else if (fromIndex > targetIndex) {
+          // Dragging up
+          if (i >= targetIndex && i < fromIndex) offset = step;
+        }
+        
+        // Apply transform with smooth transition
+        node.style.transform = offset ? `translateY(${offset}px)` : '';
       });
     }
   };
@@ -1222,12 +1206,18 @@ function startDrag(e, fromIndex){
 
     dragEl.classList.remove('is-dragging');
     dragEl.style.transform = '';
-    wraps.forEach(w => w.classList.remove('is-drag-sibling'));
+    dragEl.style.transition = '';
+    
     nodes.forEach(n => { n.style.transform = ''; });
 
     if (moved && targetIndex !== fromIndex){
+      // Reorder state
       const [moved_] = state.images.splice(fromIndex, 1);
       state.images.splice(targetIndex, 0, moved_);
+      
+      // Update selections (very tricky when moving, simplest is to clear selection on reorder)
+      state.selectedIndices.clear();
+      
       renderAll();
     }
   };
@@ -1237,9 +1227,7 @@ function startDrag(e, fromIndex){
   window.addEventListener('pointercancel', onUp);
 }
 
-/* ==================================================================
-   7. SWIPE TO DELETE
-   ================================================================== */
+/* ==================== SWIPE TO DELETE ==================== */
 function attachSwipe(li, wrap, delLabel, index){
   let startX = 0, startY = 0, currentX = 0;
   let active = false, decided = false, tracking = false;
@@ -1248,12 +1236,8 @@ function attachSwipe(li, wrap, delLabel, index){
     if (e.target.closest('.li-handle') || e.target.closest('.li-reselect')) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
 
-    startX = e.clientX;
-    startY = e.clientY;
-    currentX = 0;
-    tracking = true;
-    active = false;
-    decided = false;
+    startX = e.clientX; startY = e.clientY;
+    currentX = 0; tracking = true; active = false; decided = false;
   });
 
   window.addEventListener('pointermove', (e) => {
@@ -1290,8 +1274,7 @@ function attachSwipe(li, wrap, delLabel, index){
     const wasActive = active;
     const dx = currentX;
     const maxW = wrap.clientWidth;
-    tracking = false;
-    active = false;
+    tracking = false; active = false;
 
     if (!wasActive) return;
     li.style.transition = '';
@@ -1314,17 +1297,14 @@ function attachSwipe(li, wrap, delLabel, index){
 
   window.addEventListener('pointercancel', () => {
     if (!tracking) return;
-    tracking = false;
-    active = false;
+    tracking = false; active = false;
     li.style.transform = '';
     delLabel.style.opacity = '0';
     delLabel.style.transform = 'translateX(8px)';
   });
 }
 
-/* ==================================================================
-   8. UI TOGGLES & MODALS
-   ================================================================== */
+/* ==================== UI TOGGLES ==================== */
 function toggleDock(force){
   const next = (typeof force === 'boolean') ? force : !state.expanded;
   state.expanded = next;
@@ -1336,443 +1316,249 @@ function toggleDock(force){
   $('dockChevron').style.transform = next ? 'rotate(180deg)' : 'rotate(0deg)';
 }
 
-function openOverlay(){
-  $('overlay').classList.add('open');
-  document.body.classList.add('locked');
-}
-function closeOverlay(){
-  $('overlay').classList.remove('open');
-  document.body.classList.remove('locked');
-}
-function openPanel(id){
-  closeAllPanels();
-  openOverlay();
-  $(id).classList.add('open');
-}
-function closePanel(id){
-  $(id).classList.remove('open');
-  if (!document.querySelector('.sheet.open, .modal.open')) closeOverlay();
-}
-function closeAllPanels(){
-  document.querySelectorAll('.sheet.open, .modal.open').forEach(el => el.classList.remove('open'));
-  closeOverlay();
+function openOverlay(){ $('overlay').classList.add('open'); document.body.classList.add('locked'); }
+function closeOverlay(){ $('overlay').classList.remove('open'); document.body.classList.remove('locked'); }
+function openPanel(id){ closeAllPanels(); openOverlay(); $(id).classList.add('open'); }
+function closePanel(id){ $(id).classList.remove('open'); if (!document.querySelector('.sheet.open, .modal.open')) closeOverlay(); }
+function closeAllPanels(){ document.querySelectorAll('.sheet.open, .modal.open').forEach(el => el.classList.remove('open')); closeOverlay(); }
+
+/* ==================== ZOOM & PAN ==================== */
+function initZoom(){
+  const stage = $('stage');
+  const wrapper = $('canvasWrapper');
+  let initialDist = 0;
+  let initialZoom = 1;
+
+  stage.addEventListener('wheel', (e) => {
+    if (!state.images.length) return;
+    e.preventDefault();
+    const zoomDelta = -e.deltaY * 0.002;
+    state.zoom = clamp(state.zoom + zoomDelta, 0.2, 5);
+    wrapper.style.transform = `scale(${state.zoom})`;
+  }, { passive: false });
+
+  stage.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      initialDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      initialZoom = state.zoom;
+    }
+  }, { passive: false });
+
+  stage.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && initialDist > 0) {
+      const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      state.zoom = clamp(initialZoom * (dist / initialDist), 0.2, 5);
+      wrapper.style.transform = `scale(${state.zoom})`;
+    }
+  }, { passive: false });
+
+  stage.addEventListener('touchend', () => { initialDist = 0; });
 }
 
-/* ==================================================================
-   9. COLOR WHEEL
-   ================================================================== */
-let wheelOff = null;
-let wheelCtx = null;
-
+/* ==================== COLOR WHEEL ==================== */
+let wheelOff = null; let wheelCtx = null;
 function buildWheelCache(){
-  const size = WHEEL_SIZE;
-  const R = size / 2;
-
-  const off = document.createElement('canvas');
-  off.width = off.height = size;
-  const octx = off.getContext('2d');
-  const imgData = octx.createImageData(size, size);
-  const data = imgData.data;
-
+  const size = WHEEL_SIZE; const R = size / 2;
+  const off = document.createElement('canvas'); off.width = off.height = size;
+  const octx = off.getContext('2d'); const imgData = octx.createImageData(size, size); const data = imgData.data;
   for (let y = 0; y < size; y++){
     for (let x = 0; x < size; x++){
-      const dx = x - R + 0.5;
-      const dy = y - R + 0.5;
-      const dist = Math.hypot(dx, dy);
-      const i = (y * size + x) * 4;
-
+      const dx = x - R + 0.5; const dy = y - R + 0.5; const dist = Math.hypot(dx, dy); const i = (y * size + x) * 4;
       if (dist > R){ data[i + 3] = 0; continue; }
-
-      const sat = Math.min(1, dist / R);
-      let hue = Math.atan2(dy, dx) * 180 / Math.PI;
-      if (hue < 0) hue += 360;
-
+      const sat = Math.min(1, dist / R); let hue = Math.atan2(dy, dx) * 180 / Math.PI; if (hue < 0) hue += 360;
       const [r, g, b] = hsvToRgb(hue, sat, 1);
-      const edge = R - dist;
-      const alpha = edge < 1.2 ? Math.max(0, edge / 1.2) : 1;
-
-      data[i]     = r;
-      data[i + 1] = g;
-      data[i + 2] = b;
-      data[i + 3] = Math.round(alpha * 255);
+      const edge = R - dist; const alpha = edge < 1.2 ? Math.max(0, edge / 1.2) : 1;
+      data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = Math.round(alpha * 255);
     }
   }
-
-  octx.putImageData(imgData, 0, 0);
-  wheelOff = off;
+  octx.putImageData(imgData, 0, 0); wheelOff = off;
 }
-
 function drawWheelThumb(){
-  const canvas = $('wheelCanvas');
-  if (!wheelCtx) wheelCtx = canvas.getContext('2d');
-  const ctx = wheelCtx;
-  const size = WHEEL_SIZE;
-  const R = size / 2;
-
-  ctx.clearRect(0, 0, size, size);
-  if (wheelOff) ctx.drawImage(wheelOff, 0, 0);
-
-  const a  = state.hsv.h * Math.PI / 180;
-  const px = R + Math.cos(a) * state.hsv.s * R;
-  const py = R + Math.sin(a) * state.hsv.s * R;
-
-  ctx.beginPath();
-  ctx.arc(px, py, 10, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(0,0,0,.4)';
-  ctx.lineWidth = 4;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(px, py, 10, 0, Math.PI * 2);
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 2.2;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(px, py, 7, 0, Math.PI * 2);
-  ctx.fillStyle = state.bgColor;
-  ctx.fill();
+  const canvas = $('wheelCanvas'); if (!wheelCtx) wheelCtx = canvas.getContext('2d');
+  const ctx = wheelCtx; const size = WHEEL_SIZE; const R = size / 2;
+  ctx.clearRect(0, 0, size, size); if (wheelOff) ctx.drawImage(wheelOff, 0, 0);
+  const a = state.hsv.h * Math.PI / 180; const px = R + Math.cos(a) * state.hsv.s * R; const py = R + Math.sin(a) * state.hsv.s * R;
+  ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 4; ctx.stroke();
+  ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.2; ctx.stroke();
+  ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fillStyle = state.bgColor; ctx.fill();
 }
-
 function syncColorUI(){
-  const hex = state.bgColor;
-  $('bgValue').textContent  = hex;
-  $('hexInput').value       = hex.toUpperCase();
-  $('brightVal').textContent = Math.round(state.hsv.v * 100) + '%';
-  $('brightRange').value    = Math.round(state.hsv.v * 100);
-
-  document.querySelectorAll('.preset').forEach(p => {
-    p.classList.toggle('active', p.dataset.color.toLowerCase() === hex.toLowerCase());
-  });
-
+  const hex = state.bgColor; $('bgValue').textContent = hex; $('hexInput').value = hex.toUpperCase();
+  $('brightVal').textContent = Math.round(state.hsv.v * 100) + '%'; $('brightRange').value = Math.round(state.hsv.v * 100);
+  document.querySelectorAll('.preset').forEach(p => { p.classList.toggle('active', p.dataset.color.toLowerCase() === hex.toLowerCase()); });
   drawWheelThumb();
 }
-
 function setColorFromHex(hex, rerender = true){
-  const rgb = hexToRgb(hex);
-  if (!rgb) return false;
-  state.bgColor = rgbToHex(...rgb);
-  state.hsv = rgbToHsv(...rgb);
-  syncColorUI();
-  if (rerender) schedulePreview();
-  return true;
+  const rgb = hexToRgb(hex); if (!rgb) return false;
+  state.bgColor = rgbToHex(...rgb); state.hsv = rgbToHsv(...rgb); syncColorUI(); if (rerender) schedulePreview(); return true;
 }
-
 function setColorFromHsv(h, s, v, rerender = true){
-  state.hsv = { h, s, v };
-  state.bgColor = hsvToHex(h, s, v);
-  syncColorUI();
-  if (rerender) schedulePreview();
+  state.hsv = { h, s, v }; state.bgColor = hsvToHex(h, s, v); syncColorUI(); if (rerender) schedulePreview();
 }
-
 function initWheel(){
-  buildWheelCache();
-  const canvas = $('wheelCanvas');
-  const wrap   = $('wheelWrap');
-  let dragging = false;
-
+  buildWheelCache(); const canvas = $('wheelCanvas'); const wrap = $('wheelWrap'); let dragging = false;
   const pick = (clientX, clientY) => {
-    const rect = canvas.getBoundingClientRect();
-    const scale = WHEEL_SIZE / rect.width;
-    const x = (clientX - rect.left) * scale - WHEEL_SIZE / 2;
-    const y = (clientY - rect.top)  * scale - WHEEL_SIZE / 2;
-
-    let hue = Math.atan2(y, x) * 180 / Math.PI;
-    if (hue < 0) hue += 360;
-
-    const sat = Math.min(1, Math.hypot(x, y) / (WHEEL_SIZE / 2));
-    setColorFromHsv(hue, sat, state.hsv.v);
+    const rect = canvas.getBoundingClientRect(); const scale = WHEEL_SIZE / rect.width;
+    const x = (clientX - rect.left) * scale - WHEEL_SIZE / 2; const y = (clientY - rect.top) * scale - WHEEL_SIZE / 2;
+    let hue = Math.atan2(y, x) * 180 / Math.PI; if (hue < 0) hue += 360;
+    const sat = Math.min(1, Math.hypot(x, y) / (WHEEL_SIZE / 2)); setColorFromHsv(hue, sat, state.hsv.v);
   };
-
-  wrap.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    dragging = true;
-    wrap.setPointerCapture(e.pointerId);
-    pick(e.clientX, e.clientY);
-  });
-  wrap.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    e.preventDefault();
-    pick(e.clientX, e.clientY);
-  });
+  wrap.addEventListener('pointerdown', (e) => { e.preventDefault(); dragging = true; wrap.setPointerCapture(e.pointerId); pick(e.clientX, e.clientY); });
+  wrap.addEventListener('pointermove', (e) => { if (!dragging) return; e.preventDefault(); pick(e.clientX, e.clientY); });
   const stop = () => { dragging = false; };
-  wrap.addEventListener('pointerup', stop);
-  wrap.addEventListener('pointercancel', stop);
-
-  $('brightRange').addEventListener('input', (e) => {
-    const v = Number(e.target.value) / 100;
-    setColorFromHsv(state.hsv.h, state.hsv.s, v);
-  });
-
+  wrap.addEventListener('pointerup', stop); wrap.addEventListener('pointercancel', stop);
+  $('brightRange').addEventListener('input', (e) => { const v = Number(e.target.value) / 100; setColorFromHsv(state.hsv.h, state.hsv.s, v); });
   const hexInput = $('hexInput');
   hexInput.addEventListener('input', () => {
-    let v = hexInput.value.trim();
-    if (!v.startsWith('#')) v = '#' + v;
-    if (v.length === 7){
-      const rgb = hexToRgb(v);
-      if (rgb){
-        state.bgColor = rgbToHex(...rgb);
-        state.hsv = rgbToHsv(...rgb);
-        $('bgValue').textContent = state.bgColor;
-        $('brightVal').textContent = Math.round(state.hsv.v * 100) + '%';
-        $('brightRange').value = Math.round(state.hsv.v * 100);
-        drawWheelThumb();
-        schedulePreview();
-      }
-    }
+    let v = hexInput.value.trim(); if (!v.startsWith('#')) v = '#' + v;
+    if (v.length === 7){ const rgb = hexToRgb(v); if (rgb){ state.bgColor = rgbToHex(...rgb); state.hsv = rgbToHsv(...rgb); $('bgValue').textContent = state.bgColor; $('brightVal').textContent = Math.round(state.hsv.v * 100) + '%'; $('brightRange').value = Math.round(state.hsv.v * 100); drawWheelThumb(); schedulePreview(); } }
   });
-  hexInput.addEventListener('blur', () => {
-    hexInput.value = state.bgColor.toUpperCase();
-  });
-
+  hexInput.addEventListener('blur', () => { hexInput.value = state.bgColor.toUpperCase(); });
   const presets = $('presets');
   PRESET_COLORS.forEach(c => {
-    const b = document.createElement('button');
-    b.className = 'preset';
-    b.dataset.color = c;
-    b.style.background = c;
-    b.addEventListener('click', () => setColorFromHex(c));
-    presets.appendChild(b);
+    const b = document.createElement('button'); b.className = 'preset'; b.dataset.color = c; b.style.background = c;
+    b.addEventListener('click', () => setColorFromHex(c)); presets.appendChild(b);
   });
 }
 
-/* ==================================================================
-   10. INIT SETTINGS & EXPORT
-   ================================================================== */
+/* ==================== INIT SETTINGS & EXPORT ==================== */
 function initSettings(){
-  const colsRange = $('colsRange');
-  const colsValue = $('colsValue');
-  colsRange.addEventListener('input', (e) => {
-    state.columns = Number(e.target.value);
-    colsValue.textContent = state.columns;
-    schedulePreview();
-  });
+  const colsRange = $('colsRange'); const colsValue = $('colsValue');
+  colsRange.addEventListener('input', (e) => { state.columns = Number(e.target.value); colsValue.textContent = state.columns; schedulePreview(); });
 
   const gapChips = $('gapChips');
   GAP_OPTIONS.forEach(g => {
-    const b = document.createElement('button');
-    b.className = 'chip' + (g === state.gap ? ' active' : '');
-    b.textContent = g + 'px';
-    b.dataset.gap = g;
+    const b = document.createElement('button'); b.className = 'chip' + (g === state.gap ? ' active' : ''); b.textContent = g + 'px'; b.dataset.gap = g;
     b.addEventListener('click', () => {
-      state.gap = g;
-      $('gapValue').textContent = g + 'px';
-      gapChips.querySelectorAll('.chip').forEach(c =>
-        c.classList.toggle('active', Number(c.dataset.gap) === g)
-      );
-      schedulePreview();
+      state.gap = g; $('gapValue').textContent = g + 'px'; gapChips.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', Number(c.dataset.gap) === g)); schedulePreview();
     });
     gapChips.appendChild(b);
   });
   $('gapValue').textContent = state.gap + 'px';
 
+  const cRadius = $('canvasRadiusRange');
+  cRadius.addEventListener('input', (e) => {
+    state.canvasRadius = Number(e.target.value);
+    $('canvasRadiusValue').textContent = state.canvasRadius + 'px';
+    $('collageCanvas').style.borderRadius = state.canvasRadius + 'px';
+  });
+
+  const iRadius = $('imageRadiusRange');
+  iRadius.addEventListener('input', (e) => {
+    const val = Number(e.target.value);
+    $('imageRadiusValue').textContent = val + 'px';
+    
+    if (state.selectedIndices.size > 0) {
+      // Apply to selected
+      state.selectedIndices.forEach(idx => {
+        if (state.images[idx]) state.images[idx].radius = val;
+      });
+    } else {
+      // Apply globally
+      state.imageRadius = val;
+      state.images.forEach(img => img.radius = null); // reset individual overrides
+    }
+    schedulePreview();
+  });
+
   $('clearAllBtn').addEventListener('click', () => {
     if (!state.images.length) return toast('Nothing to clear');
-    clearAllImages();
-    closePanel('settingsSheet');
-    toast('All images cleared');
+    clearAllImages(); closePanel('settingsSheet'); toast('All images cleared');
   });
 }
 
 function initExport(){
-  const nameInput = $('filenameInput');
-  const extLabel  = $('extLabel');
-
+  const nameInput = $('filenameInput'); const extLabel = $('extLabel');
   nameInput.addEventListener('input', () => { state.filename = nameInput.value; });
-
   document.querySelectorAll('#formatSeg button').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#formatSeg button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.format = btn.dataset.format;
+      btn.classList.add('active'); state.format = btn.dataset.format;
       extLabel.textContent = '.' + (state.format === 'jpeg' ? 'jpg' : state.format);
     });
   });
 
   $('doExportBtn').addEventListener('click', async () => {
     if (!state.images.length) return toast('Add some images first');
-    const btn = $('doExportBtn');
-    const originalHTML = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = 'Rendering…';
-
+    const btn = $('doExportBtn'); const originalHTML = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = 'Rendering…';
     await new Promise(r => setTimeout(r, 40));
 
     try {
       const canvas = document.createElement('canvas');
-      drawCollage(canvas, state.images, state.columns, state.gap, state.bgColor, EXPORT_W);
-
+      drawCollage(canvas, state.images, state.columns, state.gap, state.bgColor, EXPORT_W, state.canvasRadius * 2, state.imageRadius * 2);
+      
       const mimeMap = { png: 'image/png', jpeg: 'image/jpeg', webp: 'image/webp' };
       const mime = mimeMap[state.format] || 'image/png';
       const quality = state.format === 'png' ? undefined : 0.94;
 
       canvas.toBlob((blob) => {
-        if (!blob){
-          toast('Export failed — try another format');
-          btn.disabled = false;
-          btn.innerHTML = originalHTML;
-          return;
-        }
-
+        if (!blob){ toast('Export failed'); btn.disabled = false; btn.innerHTML = originalHTML; return; }
         const ext = state.format === 'jpeg' ? 'jpg' : state.format;
         const base = (state.filename || 'collage').replace(/[\\/:*?"<>|]/g, '-').trim() || 'collage';
         const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${base}.${ext}`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
+        const a = document.createElement('a'); a.href = url; a.download = `${base}.${ext}`; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 8000);
-        btn.disabled = false;
-        btn.innerHTML = originalHTML;
-        closePanel('exportModal');
-        toast('Downloaded ' + a.download);
+        btn.disabled = false; btn.innerHTML = originalHTML; closePanel('exportModal'); toast('Downloaded ' + a.download);
       }, mime, quality);
-    } catch (err){
-      toast('Something went wrong');
-      btn.disabled = false;
-      btn.innerHTML = originalHTML;
-    }
+    } catch (err){ toast('Something went wrong'); btn.disabled = false; btn.innerHTML = originalHTML; }
   });
 }
 
-/* ==================================================================
-   11. GLOBAL WIRING / INIT & DRAG/DROP
-   ================================================================== */
+/* ==================== GLOBAL WIRING ==================== */
 function renderAll(){
-  renderPreview();
-  renderStrip();
-  renderList();
-  $('imgCount').textContent = state.images.length;
+  renderPreview(); renderStrip(); renderList(); $('imgCount').textContent = state.images.length;
 }
 
 function checkDevice(){
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  const minSide = Math.min(w, h);
-  const maxSide = Math.max(w, h);
-  const coarse  = window.matchMedia('(pointer: coarse)').matches;
-
+  const w = window.innerWidth; const h = window.innerHeight;
+  const minSide = Math.min(w, h); const maxSide = Math.max(w, h); const coarse = window.matchMedia('(pointer: coarse)').matches;
   const isTablet = coarse && minSide >= 600 && maxSide >= 768 && maxSide <= 1400;
-
-  $('tabletBlocker').classList.toggle('hidden', !isTablet);
-  $('appRoot').classList.toggle('hidden', isTablet);
+  $('tabletBlocker').classList.toggle('hidden', !isTablet); $('appRoot').classList.toggle('hidden', isTablet);
 }
 
 function initGlobal(){
-  window.addEventListener('error', function(e) {
-    toast('Error: ' + e.message);
-  });
-
-  // PWA Registration
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW failed', err));
-  }
-
-  checkDevice();
-  window.addEventListener('resize', checkDevice);
+  window.addEventListener('error', function(e) { toast('Error: ' + e.message); });
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(err => console.log('SW failed', err)); }
+  checkDevice(); window.addEventListener('resize', checkDevice);
 
   const addInput = $('addInput');
+  addInput.addEventListener('change', async (e) => { const files = e.target.files; e.target.value = ''; if (files && files.length) await addFiles(files); });
   
-  addInput.addEventListener('change', async (e) => {
-    const files = e.target.files;
-    e.target.value = '';
-    if (files && files.length) await addFiles(files);
-  });
-
   const reselectInput = $('reselectInput');
   reselectInput.addEventListener('change', async (e) => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = '';
-    if (!file || reselectIndex == null) return;
-
-    const idx = reselectIndex;
-    reselectIndex = null;
-
+    const file = e.target.files && e.target.files[0]; e.target.value = ''; if (!file || reselectIndex == null) return;
+    const idx = reselectIndex; reselectIndex = null;
     try {
-      const url = URL.createObjectURL(file);
-      const el  = await loadImageEl(url);
-      const old = state.images[idx];
+      const url = URL.createObjectURL(file); const el = await loadImageEl(url); const old = state.images[idx];
       if (!old) return;
-
-      state.images[idx] = {
-        ...old, id: uid(), url, el,
-        w: el.naturalWidth || 1,
-        h: el.naturalHeight || 1,
-        name: file.name || 'image'
-      };
-      setTimeout(() => URL.revokeObjectURL(old.url), 1000);
-      renderAll();
-      toast('Image replaced');
+      state.images[idx] = { ...old, id: uid(), url, el, w: el.naturalWidth || 1, h: el.naturalHeight || 1, name: file.name || 'image' };
+      setTimeout(() => URL.revokeObjectURL(old.url), 1000); renderAll(); toast('Image replaced');
     } catch (err){ toast('Could not load image'); }
   });
 
-  // --- Global Drag and Drop Logic ---
-  const dragOverlay = $('dragOverlay');
-  let dragCounter = 0;
-
-  window.addEventListener('dragenter', (e) => {
-    e.preventDefault();
-    if (e.dataTransfer.types.includes('Files')) {
-      dragCounter++;
-      dragOverlay.classList.add('active');
-    }
-  });
-
-  window.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  });
-
-  window.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    dragCounter--;
-    if (dragCounter === 0) {
-      dragOverlay.classList.remove('active');
-    }
-  });
-
+  const dragOverlay = $('dragOverlay'); let dragCounter = 0;
+  window.addEventListener('dragenter', (e) => { e.preventDefault(); if (e.dataTransfer.types.includes('Files')) { dragCounter++; dragOverlay.classList.add('active'); } });
+  window.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  window.addEventListener('dragleave', (e) => { e.preventDefault(); dragCounter--; if (dragCounter === 0) dragOverlay.classList.remove('active'); });
   window.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    dragCounter = 0;
-    dragOverlay.classList.remove('active');
-
+    e.preventDefault(); dragCounter = 0; dragOverlay.classList.remove('active');
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const files = Array.from(e.dataTransfer.files);
-      const validImages = files.filter(f => f.type.startsWith('image/'));
-
-      if (validImages.length === 0) {
-        toast('Only image files are allowed!');
-        return;
-      }
-      if (validImages.length < files.length) {
-        toast('Some non-image files were ignored.');
-      }
-
+      const files = Array.from(e.dataTransfer.files); const validImages = files.filter(f => f.type.startsWith('image/'));
+      if (validImages.length === 0) { toast('Only image files are allowed!'); return; }
+      if (validImages.length < files.length) { toast('Some non-image files were ignored.'); }
       await addFiles(validImages);
     }
   });
 
-  // --- Other UI listeners ---
   $('dockToggle').addEventListener('click', () => toggleDock());
   $('settingsBtn').addEventListener('click', () => openPanel('settingsSheet'));
-  $('exportBtn').addEventListener('click', () => {
-    $('filenameInput').value = state.filename;
-    openPanel('exportModal');
-  });
-
-  document.querySelectorAll('[data-close]').forEach(btn => {
-    btn.addEventListener('click', () => closePanel(btn.dataset.close));
-  });
+  $('exportBtn').addEventListener('click', () => { $('filenameInput').value = state.filename; openPanel('exportModal'); });
+  document.querySelectorAll('[data-close]').forEach(btn => { btn.addEventListener('click', () => closePanel(btn.dataset.close)); });
   $('overlay').addEventListener('click', closeAllPanels);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllPanels(); });
 
-  initSettings();
-  initWheel();
-  initExport();
+  initSettings(); initWheel(); initExport(); initZoom();
   setColorFromHex('#0a0a0b', false);
   toggleDock(false);
   renderAll();
