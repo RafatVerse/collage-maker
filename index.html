@@ -599,6 +599,59 @@ input[type="range"]::-webkit-slider-thumb {
 .top-half { top: 50%; transform: translateY(-50%); }
 .pr-16 { padding-right: 64px; }
 .text-center { text-align: center; }
+
+/* --- FULLSCREEN APP FIX --- */
+body, html {
+  overflow: hidden; /* পুরো পেজ স্ক্রল বন্ধ করবে */
+}
+#appRoot {
+  position: fixed;
+  inset: 0; /* Full Viewport */
+}
+
+/* --- FILE INPUT FIX (Mobile Click Issue) --- */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+label.btn { cursor: pointer; }
+
+/* --- GLOBAL DRAG OVERLAY --- */
+.drag-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(10, 10, 11, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.drag-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.drag-overlay-inner {
+  border: 2px dashed var(--accent);
+  background: var(--accent-soft);
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  animation: pulse 1.5s infinite;
+}
+  
 </style>
 </head>
 
